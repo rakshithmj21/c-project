@@ -44,16 +44,17 @@ pipeline {
         */
 
         stage('Deploy to Kubernetes') {
-    withCredentials([string(credentialsId: 'kubeconfig', variable: 'KUBECONFIG_CONTENT')]) {
-        sh '''
-        echo "$KUBECONFIG_CONTENT" | base64 --decode > /tmp/kubeconfig.yaml
-        export KUBECONFIG=/tmp/kubeconfig.yaml
-        kubectl apply -f k8s/deployment.yaml
-        '''
-    }
-
-
+    steps {
+        withCredentials([string(credentialsId: 'kubeconfig', variable: 'KUBECONFIG_CONTENT')]) {
+            sh '''
+            echo "$KUBECONFIG_CONTENT" | base64 --decode > /tmp/kubeconfig.yaml
+            export KUBECONFIG=/tmp/kubeconfig.yaml
+            kubectl apply -f k8s/deployment.yaml
+            '''
         }
+    }
+}
+
 
         stage('Verify') {
             steps {
