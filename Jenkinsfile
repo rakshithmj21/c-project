@@ -50,7 +50,7 @@ pipeline {
                     sh '''
                         export KUBECONFIG=$KUBECONFIG_FILE
                         kubectl apply -f k8s/deployment.yaml
-                        kubectl rollout status deployment/my-deployment
+                        kubectl rollout status deployment/k8s-cicd-demo
                     '''
                 }
             }
