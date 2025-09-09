@@ -1,77 +1,73 @@
-
-            
 pipeline {
     agent any
 
     environment {
-        DOCKER_IMAGE = "rakshi21/k8s-cicd-demo"
-        DOCKER_TAG = "latest"
-        KUBECONFIG_CREDENTIAL = "kubeconfig-file" // optional: if Jenkins needs admin.conf
+        DOCKER_IMAGE = "rakshi21/k8s-cicd-demo:latest"
     }
 
     stages {
-        stage('Checkout') {
+
+        stage('Checkout SCM') {
             steps {
-                checkout scm
+                checkout([$class: 'GitSCM', 
+                    branches: [[name: '*/main']],
+                    userRemoteConfigs: [[
+                        url: 'https://github.com/rakshithmj21/c-project.git',
+                        credentialsId: 'rakshithmj21'
+                    ]]
+                ])
             }
         }
 
-        stage('Build Image') {
+        stage('Build Docker Image') {
             steps {
                 script {
-                    sh "docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} ./app"
+                    sh "docker build -t ${DOCKER_IMAGE} ./app"
                 }
             }
         }
 
-        stage('Login & Push') {
+        stage('Login & Push Docker Image') {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'dockerhub', usernameVariable: 'DH_USER', passwordVariable: 'DH_PWD')]) {
-                    sh 'echo $DH_PWD | docker login -u $DH_USER --password-stdin'
-                    sh "docker push ${DOCKER_IMAGE}:${DOCKER_TAG}"
+                withCredentials([usernamePassword(
+                    credentialsId: 'dockerhub', 
+                    usernameVariable: 'DOCKER_USER', 
+                    passwordVariable: 'DOCKER_PASS'
+                )]) {
+                    sh '''
+                        echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
+                        docker push ${DOCKER_IMAGE}
+                        docker logout
+                    '''
                 }
             }
         }
 
-        /* Option A: If Jenkins has kubectl configured (kubeconfig in Jenkins home)
         stage('Deploy to Kubernetes') {
             steps {
-                sh "kubectl set image deployment/k8s-cicd-demo web=${DOCKER_IMAGE}:${DOCKER_TAG} --record || true"
-                sh "kubectl apply -f k8s/service.yaml || true"
-                sh "kubectl rollout status deployment/k8s-cicd-demo --timeout=120s"
-            }
-        }
-        */
-
-        stage('Deploy to Kubernetes') {
-    steps {
-        // Use the 'kubeconfig' credential securely
-        withCredentials([string(credentialsId: 'kubeconfig', variable: 'KUBECONFIG_CONTENT')]) {
-            // Write kubeconfig to a temporary file
-            sh '''
-                echo "$KUBECONFIG_CONTENT" > kubeconfig.yaml
-                export KUBECONFIG=$(pwd)/kubeconfig.yaml
-                kubectl apply -f k8s/deployment.yaml
-                kubectl rollout status deployment/my-deployment
-            '''
-        }
-    }
-}
-
-
-        stage('Verify') {
-            steps {
-                withCredentials([string(credentialsId: 'kubeconfig-file', variable: 'KUBECONFIG')]) {
-                    sh "kubectl get pods -o wide"
-                    sh "kubectl get svc k8s-cicd-demo-svc -o wide"
+                // Secret File method
+                withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG_FILE')]) {
+                    sh '''
+                        export KUBECONFIG=$KUBECONFIG_FILE
+                        kubectl apply -f k8s/deployment.yaml
+                        kubectl rollout status deployment/my-deployment
+                    '''
                 }
             }
         }
+
     }
 
     post {
         always {
-            sh "docker logout || true"
+            echo 'Pipeline finished.'
         }
-   }
+        success {
+            echo 'Deployment succeeded!'
+        }
+        failure {
+            echo 'Deployment failed. Check logs.'
+        }
+    }
 }
+
