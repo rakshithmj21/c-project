@@ -45,11 +45,14 @@ pipeline {
 
         stage('Deploy to Kubernetes') {
     steps {
+        // Use the 'kubeconfig' credential securely
         withCredentials([string(credentialsId: 'kubeconfig', variable: 'KUBECONFIG_CONTENT')]) {
+            // Write kubeconfig to a temporary file
             sh '''
-            echo "$KUBECONFIG_CONTENT" | base64 --decode > /tmp/kubeconfig.yaml
-            export KUBECONFIG=/tmp/kubeconfig.yaml
-            kubectl apply -f k8s/deployment.yaml
+                echo "$KUBECONFIG_CONTENT" > kubeconfig.yaml
+                export KUBECONFIG=$(pwd)/kubeconfig.yaml
+                kubectl apply -f k8s/deployment.yaml
+                kubectl rollout status deployment/my-deployment
             '''
         }
     }
