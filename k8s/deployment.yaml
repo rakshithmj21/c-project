@@ -15,8 +15,8 @@ spec:
         app: k8s-cicd-demo
     spec:
       containers:
-      - name: web
-        image: <DOCKERHUB_USER>/k8s-cicd-demo:latest
+      - name: k8s-cicd-demo
+        image: rakshi21/k8s-cicd-demo:latest
         imagePullPolicy: Always
         ports:
         - containerPort: 80
