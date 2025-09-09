@@ -68,6 +68,4 @@ pipeline {
         always {
             sh "docker logout || true"
         }
-    }
-}
->>>>>>> 17cbd8777b21634a87fbe7ff992f573b17fae411
+   }
